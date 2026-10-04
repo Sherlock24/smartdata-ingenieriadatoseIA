@@ -86,7 +86,7 @@ Los datos provienen de dos archivos planos cargados al contenedor `raw`:
 | Azure Databricks Workspace | Workspace con Unity Catalog habilitado |
 
 ![Flujo de Trabajo](evidencias/Azure/Contenedores.png)
-![Flujo de Trabajo](evidencias/Azure/resource groups detalle.png)
+![Flujo de Trabajo](evidencias/Azure/resource_groups_detalle.png)
 
 ### Databricks
 
@@ -104,7 +104,7 @@ Los datos provienen de dos archivos planos cargados al contenedor `raw`:
 | CI/CD | GitHub Actions | Despliegue y ejecución automática del pipeline en producción |
 
 ![Flujo de Trabajo](evidencias/Databricks/Credential.png)
-![Flujo de Trabajo](evidencias/Databricks/External Locations.png)
+![Flujo de Trabajo](evidencias/Databricks/External_Locations.png)
 
 ## 4) Configuración inicial del ambiente
 
