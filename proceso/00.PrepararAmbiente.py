@@ -164,20 +164,34 @@ dbutils.fs.rm(f"abfss://gold@{storageName}.dfs.core.windows.net/",True)
 
 # COMMAND ----------
 
+# DBTITLE 1,Tabla silver.ventas_productos_categorias
 # MAGIC %sql
+# MAGIC -- Tabla Delta Silver: join enriquecido de ventas (STATUS='VALID') + productos
+# MAGIC -- Incluye métricas financieras, dimensiones temporales, segmentación y auditoría Silver
 # MAGIC CREATE TABLE IF NOT EXISTS cat_ftr_smartdata_dev.silver.ventas_productos_categorias (
-# MAGIC   ID_ARTICULO STRING,
-# MAGIC   PRODUCTO STRING,
-# MAGIC   CATEGORIA STRING,
-# MAGIC   ID_PEDIDO STRING,
-# MAGIC   TIENDA STRING,
-# MAGIC   NUM_LINEA INT,
-# MAGIC   FECHA DATE,
-# MAGIC   CANTIDAD INT,
-# MAGIC   PRECIO DOUBLE,
-# MAGIC   DESCUENTO INT,
-# MAGIC   ID_VENDEDOR STRING,
-# MAGIC   ETIQUETA_DESCUENTO STRING
+# MAGIC   ID_ARTICULO        STRING     COMMENT 'Identificador del artículo',
+# MAGIC   PRODUCTO           STRING     COMMENT 'Nombre del producto (normalizado)',
+# MAGIC   CATEGORIA          STRING     COMMENT 'Categoría del producto (normalizada)',
+# MAGIC   ID_PEDIDO          STRING     COMMENT 'Identificador del pedido',
+# MAGIC   TIENDA             STRING     COMMENT 'Nombre de la tienda (normalizado)',
+# MAGIC   NUM_LINEA          STRING     COMMENT 'Número de línea dentro del pedido',
+# MAGIC   FECHA              DATE       COMMENT 'Fecha de la venta',
+# MAGIC   CANTIDAD           INT        COMMENT 'Unidades vendidas',
+# MAGIC   PRECIO             DOUBLE     COMMENT 'Precio unitario',
+# MAGIC   DESCUENTO          INT        COMMENT 'Porcentaje de descuento aplicado',
+# MAGIC   ID_VENDEDOR        STRING     COMMENT 'Identificador del vendedor',
+# MAGIC   ETIQUETA_DESCUENTO STRING     COMMENT 'Categoría: Precio Normal / Promoción / Bono Empresarial / Regalo',
+# MAGIC   IMPORTE_BRUTO      DOUBLE     COMMENT 'CANTIDAD x PRECIO',
+# MAGIC   IMPORTE_DESCUENTO  DOUBLE     COMMENT 'Monto del descuento aplicado',
+# MAGIC   IMPORTE_NETO       DOUBLE     COMMENT 'IMPORTE_BRUTO menos IMPORTE_DESCUENTO',
+# MAGIC   ANIO               INT        COMMENT 'Año de la venta',
+# MAGIC   MES                INT        COMMENT 'Mes de la venta',
+# MAGIC   TRIMESTRE          INT        COMMENT 'Trimestre de la venta (1-4)',
+# MAGIC   DIA_SEMANA         INT        COMMENT 'Día de la semana: 1=Dom, 7=Sáb',
+# MAGIC   ES_FIN_SEMANA      BOOLEAN    COMMENT 'True si la venta ocurrió en sábado o domingo',
+# MAGIC   RANGO_PRECIO       STRING     COMMENT 'Segmento: Económico / Estándar / Premium / Lujo',
+# MAGIC   FECHA_PROCESO      TIMESTAMP  COMMENT 'Fecha y hora de la transformación Silver',
+# MAGIC   INGESTION_USER     STRING     COMMENT 'Usuario o SP que ejecutó el proceso Silver'
 # MAGIC )
 # MAGIC USING DELTA
 # MAGIC LOCATION "abfss://silver@${storageName}.dfs.core.windows.net/ventas_productos_categorias"

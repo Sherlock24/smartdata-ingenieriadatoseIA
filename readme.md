@@ -136,6 +136,66 @@ Los notebooks `01.IngestaProductos.ipynb` y `01.IngestaVentas.ipynb` ejecutan el
 
 ---
 
+## Capa Silver
+
+La capa Silver aplica reglas de negocio, limpieza y enriquecimiento sobre los datos crudos de Bronze. En esta etapa se realiza el join entre ambas fuentes, se filtran registros inválidos, se calculan métricas derivadas y se añaden dimensiones analíticas listas para ser consumidas por las capas Gold y Power BI.
+
+### Entradas (Inputs)
+
+| Tabla fuente | Capa | Descripción |
+|---|---|---|
+| `cat_ftr_smartdata_dev.bronze.ventas` | Bronze | Pedidos de venta — solo registros con `STATUS='VALID'` |
+| `cat_ftr_smartdata_dev.bronze.productos` | Bronze | Catálogo de productos (∼39K artículos, usado como broadcast) |
+
+### Proceso de transformación
+
+El notebook `proceso/02.Transform_Ventas_Productos.ipynb` ejecuta el siguiente flujo:
+
+1. **Proyección sin auditoría Bronze** — Se seleccionan solo los campos de negocio de ambas tablas; los campos `INGESTION_DATE`, `SOURCE_FILE_NAME` e `INGESTION_USER` de Bronze se descartan deliberadamente — Silver genera su propia trazabilidad.
+2. **Filtrado de calidad** — Solo se procesan ventas con `STATUS='VALID'`. Se eliminan nulos en campos clave y registros fuera de rango lógico (CANTIDAD > 0, PRECIO > 0, DESCUENTO en [0, 100]).
+3. **Normalización de texto** — PRODUCTO, CATEGORIA y TIENDA se estandarizan con `trim + uppercase` para garantizar consistencia en las agrupaciones Gold.
+4. **Join broadcast** — El catálogo de productos (∼39K filas) se difunde con `F.broadcast()` para evitar un shuffle completo sobre el dataset de ventas (∼1M+ registros).
+5. **Enriquecimiento analítico** — Se calculan etiqueta de descuento, importes financieros (bruto, descuento y neto), dimensiones temporales (año, mes, trimestre, día semana, fin de semana) y segmento de precio.
+6. **Auditoría Silver** — Se añaden campos de trazabilidad propios de esta capa.
+7. **Escritura en Delta** — Se persiste con `coalesce(4)`, `mode("overwrite")` y `overwriteSchema=true` en la tabla `silver.ventas_productos_categorias`.
+
+### Tabla producida: `ventas_productos_categorias`
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `ID_ARTICULO` | `string` | Identificador del artículo |
+| `PRODUCTO` | `string` | Nombre del producto (normalizado) |
+| `CATEGORIA` | `string` | Categoría del producto (normalizada) |
+| `ID_PEDIDO` | `string` | Identificador del pedido |
+| `TIENDA` | `string` | Nombre de la tienda (normalizado) |
+| `NUM_LINEA` | `string` | Número de línea dentro del pedido |
+| `FECHA` | `date` | Fecha de la venta |
+| `CANTIDAD` | `int` | Unidades vendidas |
+| `PRECIO` | `double` | Precio unitario |
+| `DESCUENTO` | `int` | Porcentaje de descuento aplicado |
+| `ID_VENDEDOR` | `string` | Identificador del vendedor |
+| `ETIQUETA_DESCUENTO` | `string` | Precio Normal / Promoción / Bono Empresarial / Regalo |
+| `IMPORTE_BRUTO` | `double` | CANTIDAD × PRECIO |
+| `IMPORTE_DESCUENTO` | `double` | Monto del descuento aplicado |
+| `IMPORTE_NETO` | `double` | IMPORTE_BRUTO − IMPORTE_DESCUENTO |
+| `ANIO` | `int` | Año de la venta |
+| `MES` | `int` | Mes de la venta |
+| `TRIMESTRE` | `int` | Trimestre de la venta (1–4) |
+| `DIA_SEMANA` | `int` | Día de la semana (1=Dom, 7=Sáb) |
+| `ES_FIN_SEMANA` | `boolean` | True si la venta ocurrió en sábado o domingo |
+| `RANGO_PRECIO` | `string` | Económico / Estándar / Premium / Lujo |
+
+### Campos de auditoría añadidos
+
+| Campo | Tipo | Descripción | Función Spark |
+|---|---|---|---|
+| `FECHA_PROCESO` | `timestamp` | Fecha y hora de la transformación Silver | `current_timestamp()` |
+| `INGESTION_USER` | `string` | Usuario o SP que ejecutó el proceso Silver | `current_user()` |
+
+> Los campos de auditoría Bronze (`INGESTION_DATE`, `SOURCE_FILE_NAME`) **no se propagan** a Silver — cada capa mantiene su propia trazabilidad independiente.
+
+---
+
 ## Tablas Golden
 
 ### `ventas_diarias_tienda`
