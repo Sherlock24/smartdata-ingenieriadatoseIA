@@ -93,8 +93,6 @@ El notebook `proceso/00.PrepararAmbiente.ipynb` se ejecuta una sola vez para cre
 
 ## 5) Arquitectura (Medallion)
 
-![Flujo de Trabajo](evidencias/Databricks/Worflow.png)
-
 Los datos se separan en contenedores distintos por capa dentro de ADLS Gen2 (`raw`, `bronze`, `silver`, `golden`), cada uno gobernado mediante una **External Location** (`extl-raw`, `extl-bronze`, `extl-silver`, `extl-golden`, `extl-catalog`) respaldada por una **Storage Credential** llamada `credential`. Sobre esa base se organiza el catálogo `catalog_dev` con un esquema por capa:
 
 | Esquema  | Contenedor ADLS | Contenido |
