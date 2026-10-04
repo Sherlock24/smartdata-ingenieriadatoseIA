@@ -133,6 +133,8 @@ Los notebooks `01.IngestaProductos.ipynb` y `01.IngestaVentas.ipynb` ejecutan el
 
 > Estos tres campos permiten auditar **cuándo**, **desde dónde** y **quién** realizó cada carga, sin alterar los datos originales del negocio.
 
+![Flujo de Trabajo](evidencias/Databricks/UC_Bronze.png)
+
 ---
 
 ## 5.2 Capa Silver
@@ -159,6 +161,8 @@ El notebook `proceso/02.Transform_Ventas_Productos.ipynb` ejecuta el siguiente f
 7. **Escritura en Delta** — Se persiste con `coalesce(4)`, `mode("overwrite")` y `overwriteSchema=true` en la tabla `silver.ventas_productos_categorias`.
 
 ### Tabla producida: `ventas_productos_categorias`
+
+![Flujo de Trabajo](evidencias/Databricks/UC_Silver.png)
 
 | Columna | Tipo | Descripción |
 |---|---|---|
@@ -214,6 +218,8 @@ La capa Gold produce tablas **pre-agregadas y desnormalizadas**, optimizadas par
 | `03.Transform_Gold_KPI_Vendedor_Mes.ipynb` | `kpi_vendedor_mes` | Vendedor + Tienda + Mes |
 
 En todos los casos se consumen directamente `IMPORTE_BRUTO`, `IMPORTE_NETO`, `ANIO`, `MES` y `TRIMESTRE` desde Silver — sin recalcular desde `PRECIO` y `DESCUENTO`.
+
+![Flujo de Trabajo](evidencias/Databricks/UC_Golden.png)
 
 ---
 
