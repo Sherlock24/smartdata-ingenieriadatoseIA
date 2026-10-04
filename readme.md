@@ -26,17 +26,6 @@ El proyecto parte de dos archivos CSV crudos — `items.csv` (catálogo de produ
 
 Para esto fue necesario configurar un Data Lake en Azure (ADLS Gen2) con un contenedor por capa, gobernar el acceso mediante Unity Catalog (External Locations y Storage Credentials), parametrizar todos los notebooks con widgets (catálogo, esquemas, nombre del storage), y automatizar el despliegue a producción mediante GitHub Actions.
 
----
-
-## Stack tecnológico
-
-- **Azure Databricks** — entorno de ejecución de los notebooks y jobs
-- **PySpark** — procesamiento y transformación de datos
-- **Delta Lake** — formato de almacenamiento de las tablas
-- **Unity Catalog** — gobernanza, catálogo y control de acceso (External Locations, Storage Credentials, Grants)
-- **Azure Data Lake Storage Gen2** — almacenamiento de archivos por capa (raw, bronze, silver, golden)
-- **GitHub Actions** — CI/CD para el despliegue automático de notebooks y jobs a producción
-- **Power BI** — visualización y dashboards sobre las tablas Golden
 
 ---
 
