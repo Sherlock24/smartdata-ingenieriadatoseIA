@@ -35,29 +35,15 @@ Para esto fue necesario configurar un Data Lake en Azure (ADLS Gen2) con un cont
 - **Azure Databricks** — entorno de ejecución de los notebooks y jobs
 - **PySpark** — procesamiento y transformación de datos
 - **Delta Lake** — formato de almacenamiento de las tablas
-- **Unity Catalog** — gobernanza, catálogo (`catalog_dev`) y control de acceso (External Locations, Storage Credentials, Grants)
+- **Unity Catalog** — gobernanza, catálogo y control de acceso (External Locations, Storage Credentials, Grants)
 - **Azure Data Lake Storage Gen2** — almacenamiento de archivos por capa (raw, bronze, silver, golden)
 - **GitHub Actions** — CI/CD para el despliegue automático de notebooks y jobs a producción
 - **Power BI** — visualización y dashboards sobre las tablas Golden
 
 ---
 
-## Arquitectura (Medallion)
 
-![Flujo de Trabajo](evidencias/Databricks/Worflow.png)
-
-Los datos se separan en contenedores distintos por capa dentro de ADLS Gen2 (`raw`, `bronze`, `silver`, `golden`), cada uno gobernado mediante una **External Location** (`extl-raw`, `extl-bronze`, `extl-silver`, `extl-golden`, `extl-catalog`) respaldada por una **Storage Credential** llamada `credential`. Sobre esa base se organiza el catálogo `catalog_dev` con un esquema por capa:
-
-| Esquema  | Contenedor ADLS | Contenido |
-|----------|-----------------|-----------|
-| `raw`    | `raw`           | Archivos CSV de origen (`orders.csv`, `items.csv`) |
-| `bronze` | `bronze`        | Tablas Delta con los datos crudos ingeridos + columna `INGESTION_DATE` |
-| `silver` | `silver`        | Tabla limpia y unida `ventas_productos_categorias` |
-| `golden` | `golden`        | Tablas agregadas `ventas_diarias_tienda` y `ventas_categoria_mes` |
-
----
-
-## Estructura del repositorio
+## 1) Estructura del repositorio
 
 ```
 smartdata-ingenieriadatoseIA/
@@ -83,7 +69,7 @@ smartdata-ingenieriadatoseIA/
 
 ---
 
-## Dataset utilizado
+## 2) Dataset utilizado
 
 Los datos provienen de dos archivos planos cargados al contenedor `raw`:
 
@@ -92,19 +78,35 @@ Los datos provienen de dos archivos planos cargados al contenedor `raw`:
 | `items.csv` | Catálogo de productos — ID, nombre y categoría | 39.194 |
 | `orders.csv` | Pedidos de venta — tienda, fecha, artículo, cantidad, precio, descuento, vendedor y estado | 1.090.380 |
 
-### 1. Recursos de Azure utilizados
+## 3) Recursos de Azure utilizados
 - Storage Account con Hierarchical Namespace habilitado (ADLS Gen2)
 - Contenedores: `raw`, `bronze`, `silver`, `golden`
 - Azure Databricks Workspace con Unity Catalog habilitado
 - External Locations (raw,bronze,silver,gold,metastore) y Storage Credential `cred-ftr-smartdata-azure-dev-01`
 - Clusters `cl-ftr-smartdata-dev-01` (desarrollo)
 
-### 2. Configuración del ambiente y Unity Catalog
+## 4) Configuración del ambiente y Unity Catalog
 El notebook `proceso/00.PrepararAmbiente.ipynb` se ejecuta una sola vez para crear las External Locations, el catálogo `cat_ftr_smartdata_dev`, los esquemas (`raw`, `bronze`, `silver`, `golden`) y las tablas Delta vacías. El notebook `seguridad/01.Grants.ipynb` documenta los permisos (GRANT/REVOKE) sobre catálogo, esquemas, tablas y External Locations.
 
 ---
 
-## Capa Bronze
+
+## 5) Arquitectura (Medallion)
+
+![Flujo de Trabajo](evidencias/Databricks/Worflow.png)
+
+Los datos se separan en contenedores distintos por capa dentro de ADLS Gen2 (`raw`, `bronze`, `silver`, `golden`), cada uno gobernado mediante una **External Location** (`extl-raw`, `extl-bronze`, `extl-silver`, `extl-golden`, `extl-catalog`) respaldada por una **Storage Credential** llamada `credential`. Sobre esa base se organiza el catálogo `catalog_dev` con un esquema por capa:
+
+| Esquema  | Contenedor ADLS | Contenido |
+|----------|-----------------|-----------|
+| `raw`    | `raw`           | Archivos CSV de origen (`orders.csv`, `items.csv`) |
+| `bronze` | `bronze`        | Tablas Delta con los datos crudos ingeridos + columna `INGESTION_DATE` |
+| `silver` | `silver`        | Tabla limpia y unida `ventas_productos_categorias` |
+| `golden` | `golden`        | Tablas agregadas `ventas_diarias_tienda` y `ventas_categoria_mes` |
+
+---
+
+## 5.1 Capa Bronze
 
 La capa Bronze representa el primer nivel de la arquitectura Medallion. En esta etapa los datos crudos del contenedor `raw` son ingeridos **sin transformaciones de negocio**, preservando la fidelidad del origen y enriqueciéndose únicamente con campos de auditoría para trazabilidad.
 
@@ -136,7 +138,7 @@ Los notebooks `01.IngestaProductos.ipynb` y `01.IngestaVentas.ipynb` ejecutan el
 
 ---
 
-## Capa Silver
+## 5.2 Capa Silver
 
 La capa Silver aplica reglas de negocio, limpieza y enriquecimiento sobre los datos crudos de Bronze. En esta etapa se realiza el join entre ambas fuentes, se filtran registros inválidos, se calculan métricas derivadas y se añaden dimensiones analíticas listas para ser consumidas por las capas Gold y Power BI.
 
@@ -196,7 +198,7 @@ El notebook `proceso/02.Transform_Ventas_Productos.ipynb` ejecuta el siguiente f
 
 ---
 
-## Capa Gold
+## 5.3 Capa Gold
 
 La capa Gold produce tablas **pre-agregadas y desnormalizadas**, optimizadas para consumo directo en Power BI sin necesidad de lógica adicional en los informes. Cada tabla define una perspectiva analítica distinta sobre los datos de ventas.
 
@@ -284,9 +286,9 @@ KPIs mensuales por vendedor y tienda para análisis de rendimiento comercial ind
 
 ---
 
-### 5. Job de orquestación
+## 6) Job de orquestación
 
-El job [`job-ftr-smartdata-proyectofinal-dev-01`](#job-974747376940337) coordina la ejecución completa del pipeline Medallion (Bronze → Silver → Gold) sobre el cluster `cl-ftr-smartdata-dev-01`. Está compuesto por **6 tareas** con dependencias explícitas: las dos ingestas Bronze arrancan en paralelo, la transformación Silver espera a ambas, y las tres agregaciones Gold se ejecutan en paralelo una vez que Silver completa.
+El job **job-ftr-smartdata-proyectofinal-dev-01** coordina la ejecución completa del pipeline Medallion (Bronze → Silver → Gold) sobre el cluster `cl-ftr-smartdata-dev-01`. Está compuesto por **6 tareas** con dependencias explícitas: las dos ingestas Bronze arrancan en paralelo, la transformación Silver espera a ambas, y las tres agregaciones Gold se ejecutan en paralelo una vez que Silver completa.
 
 #### Tareas y dependencias
 
@@ -318,15 +320,17 @@ El job [`job-ftr-smartdata-proyectofinal-dev-01`](#job-974747376940337) coordina
 | Política de ejecución de tareas | `ALL_SUCCESS` — si una tarea falla, las dependientes se cancelan |
 | Optimización | `PERFORMANCE_OPTIMIZED` |
 
-![Flujo de Trabajo](evidencias/Databricks/Worflow_Ejecucion.png)
+#### Job
+
+![Flujo de Trabajo](evidencias/Databricks/Worflow.png)
 
 ---
-## Dashboard
+## 7) Dashboard
 
 Sobre las tablas Golden se construyó un dashboard en Power BI (`dashboard/Dashboard.pbix`) con la carga de datos desde Databricks y dos vistas principales: ventas por mes y ventas por categoría y mes.
 
 ---
 
-## Autor
+## 8) Autor
 
 Proyecto desarrollado por **Frank Torres** como entregable del curso de Ingeniería de Datos e IA en SmartData.
