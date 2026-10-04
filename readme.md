@@ -284,8 +284,39 @@ KPIs mensuales por vendedor y tienda para análisis de rendimiento comercial ind
 
 ---
 
-### 5. Job configurado
-En Databricks Workflows se configuró el job `job-ftr-smartdata-proyectofinal-dev-01`, que encadena los 5 notebooks en orden (ingestas → transformación Silver → agregaciones Golden) respetando sus dependencias.
+### 5. Job de orquestación
+
+El job [`job-ftr-smartdata-proyectofinal-dev-01`](#job-974747376940337) coordina la ejecución completa del pipeline Medallion (Bronze → Silver → Gold) sobre el cluster `cl-ftr-smartdata-dev-01`. Está compuesto por **6 tareas** con dependencias explícitas: las dos ingestas Bronze arrancan en paralelo, la transformación Silver espera a ambas, y las tres agregaciones Gold se ejecutan en paralelo una vez que Silver completa.
+
+#### Tareas y dependencias
+
+| Tarea | Notebook | Capa | Tabla producida | Depende de |
+|---|---|---|---|---|
+| `task-01-ingest-bronze-items` | `01.IngestaProductos` | Bronze | `bronze.productos` | — |
+| `task-02-ingest-bronze-ventas` | `01.IngestaVentas` | Bronze | `bronze.ventas` | — |
+| `task-03-ingest-silver-ventasproductos` | `02.Transform_Ventas_Productos` | Silver | `silver.ventas_productos_categorias` | task-01 + task-02 |
+| `task-04-ingest-gold-ventascategoria` | `03.Transform_Gold_Ventas_Categoria_Mes` | Gold | `golden.ventas_categoria_mes` | task-03 |
+| `task-05-ingest-gold-ventasdiarias` | `03.Transform_Gold_Ventas_Diarias_Tienda` | Gold | `golden.ventas_diarias_tienda` | task-03 |
+| `task-06-ingest-gold-kpivendedormes` | `03.Transform_Gold_KPI_Vendedor_Mes` | Gold | `golden.kpi_vendedor_mes` | task-03 |
+
+#### Grafo de dependencias
+
+```
+[Bronze]  task-01 ─ IngestaProductos ─┐
+                                       ├► [Silver] task-03 ─ Transform_Ventas_Productos ─┬► [Gold] task-04 ─ Ventas_Categoria_Mes
+[Bronze]  task-02 ─ IngestaVentas ───┘                                              ├► [Gold] task-05 ─ Ventas_Diarias_Tienda
+                                                                                     └► [Gold] task-06 ─ KPI_Vendedor_Mes
+```
+
+#### Configuración del job
+
+| Parámetro | Valor |
+|---|---|
+| Cluster | `cl-ftr-smartdata-dev-01` |
+| Runs concurrentes máximos | 1 |
+| Cola habilitada | Sí |
+| Política de ejecución de tareas | `ALL_SUCCESS` — si una tarea falla, las dependientes se cancelan |
+| Optimización | `PERFORMANCE_OPTIMIZED` |
 
 ![Flujo de Trabajo](evidencias/Databricks/Worflow_Ejecucion.png)
 
