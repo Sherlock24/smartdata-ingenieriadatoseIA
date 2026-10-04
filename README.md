@@ -1,0 +1,2 @@
+# smartdata-ingenieriadatoseIA
+proyecto smartdata
