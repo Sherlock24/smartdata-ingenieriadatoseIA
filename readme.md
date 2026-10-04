@@ -111,7 +111,7 @@ A partir de las tablas Bronze, el pipeline construye la capa Silver y luego las 
 ### 5. Job configurado
 En Databricks Workflows se configuró el job `job-ftr-smartdata-proyectofinal-dev-01`, que encadena los 5 notebooks en orden (ingestas → transformación Silver → agregaciones Golden) respetando sus dependencias.
 
-![Workflow de producción](evidencias/Databricks/Workflow.png)
+https://github.com/Sherlock24/smartdata-ingenieriadatoseIA/blob/develop/evidencias/Databricks/Worflow.png
 
 ## Tablas Golden
 
