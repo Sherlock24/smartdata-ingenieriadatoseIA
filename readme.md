@@ -45,24 +45,33 @@ Para esto fue necesario configurar un Data Lake en Azure (ADLS Gen2) con un cont
 
 ```
 smartdata-ingenieriadatoseIA/
-├── proceso/                                    # Notebooks del pipeline (orden de ejecución)
-│   ├── 00.PrepararAmbiente.ipynb                # Setup: external locations, catálogo, esquemas y tablas vacías
-│   ├── 01.IngestaProductos.ipynb                # raw -> bronze.productos
-│   ├── 01.IngestaVentas.ipynb                   # raw -> bronze.ventas
-│   ├── 02.Transform_Ventas_Productos.ipynb      # bronze -> silver (join + etiqueta de descuento)
-│   ├── 03.Transform_Gold_Ventas_Diarias_Tienda.ipynb   # silver -> golden (agregación diaria por tienda)
-│   └── 03.Transform_Gold_Ventas_Categoria_Mes.ipynb    # silver -> golden (agregación mensual por categoría)
+├── proceso/                                              # Notebooks del pipeline (orden de ejecución)
+│   ├── 00.PrepararAmbiente                               # Setup: external locations, catálogo, esquemas y tablas vacías
+│   ├── 01.IngestaProductos                               # [Bronze] raw → bronze.productos
+│   ├── 01.IngestaVentas                                  # [Bronze] raw → bronze.ventas
+│   ├── 02.Transform_Ventas_Productos                     # [Silver] bronze → silver.ventas_productos_categorias
+│   ├── 03.Transform_Gold_Ventas_Diarias_Tienda           # [Gold]   silver → golden.ventas_diarias_tienda
+│   ├── 03.Transform_Gold_Ventas_Categoria_Mes            # [Gold]   silver → golden.ventas_categoria_mes
+│   └── 03.Transform_Gold_KPI_Vendedor_Mes                # [Gold]   silver → golden.kpi_vendedor_mes
 ├── seguridad/
-│   └── 01.Grants.ipynb                          # Permisos (GRANT/REVOKE) sobre catálogo, esquemas y external locations
+│   └── 01.Grants                                         # Permisos (GRANT/REVOKE) sobre catálogo, esquemas y external locations
 ├── reversion/
-│   └── reverso.ipynb                           # Notebook para eliminar tablas y datos del esquema
-├── datasets/                                   # CSVs de origen (items.csv, orders.csv)
+│   └── Rollback                                          # Elimina tablas Delta y archivos ADLS de las 3 capas (DROP + rm)
+├── datasets/                                             # CSVs de origen cargados al contenedor raw de ADLS
+│   ├── items.csv                                         # Catálogo de productos (~39K registros)
+│   └── orders.csv                                        # Pedidos de venta (~1M registros)
 ├── dashboard/
-│   └── Dashboard.pbix                          # Dashboard de Power BI sobre las tablas Golden
-├── evidencias/                                 # Capturas de los recursos, workflows y dashboards
-└── .github/workflows/
-    └── 
-# CI/CD: despliegue y ejecución del pipeline en producción
+│   └── PowerBI_ProyectoFinal.pbix                        # Dashboard Power BI conectado a las tablas Golden de Databricks
+├── evidencias/                                           # Capturas de pantalla de los recursos configurados
+│   ├── Azure/                                            # Storage Account, contenedores ADLS y Key Vault
+│   ├── Databricks/                                       # Unity Catalog, External Locations, Credential y Workflows
+│   └── PowerBI/                                          # Dashboard conectado a Databricks
+├── certificaciones/
+│   ├── 3664_3_..._Databricks - Generic.pdf               # Certificación Databricks
+│   └── Certificaciones_enlace.txt                        # Enlace a certificaciones adicionales
+├── .github/workflows/                                    # CI/CD: despliegue y ejecución del pipeline en producción
+├── .gitignore
+└── readme.md
 ```
 
 ---
