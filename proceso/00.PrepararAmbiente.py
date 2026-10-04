@@ -115,20 +115,24 @@ dbutils.fs.rm(f"abfss://gold@{storageName}.dfs.core.windows.net/",True)
 
 # COMMAND ----------
 
-# DBTITLE 1,Cell 21
+# DBTITLE 1,Cell 19 - Tabla bronze.ventas
 # MAGIC %sql
+# MAGIC -- Tabla Delta bronze para ventas (orders.csv)
+# MAGIC -- Campos de negocio + campos de auditoría mínimos: INGESTION_DATE, SOURCE_FILE_NAME, INGESTION_USER
 # MAGIC CREATE TABLE IF NOT EXISTS cat_ftr_smartdata_dev.bronze.ventas (
-# MAGIC ID_ORDER STRING,
-# MAGIC STORE STRING,
-# MAGIC REG INT,
-# MAGIC DATE DATE,
-# MAGIC ID_ITEM STRING,
-# MAGIC QTY INT,
-# MAGIC PRICE DECIMAL(12,2),
-# MAGIC DISCOUNT DECIMAL(12,2),
-# MAGIC ID_SELLER STRING,
-# MAGIC STATUS STRING,
-# MAGIC INGESTION_DATE TIMESTAMP
+# MAGIC ID_ORDER         STRING,
+# MAGIC STORE            STRING,
+# MAGIC REG              INT,
+# MAGIC DATE             DATE,
+# MAGIC ID_ITEM          STRING,
+# MAGIC QTY              INT,
+# MAGIC PRICE            DECIMAL(12,2),
+# MAGIC DISCOUNT         DECIMAL(12,2),
+# MAGIC ID_SELLER        STRING,
+# MAGIC STATUS           STRING,
+# MAGIC INGESTION_DATE   TIMESTAMP,
+# MAGIC SOURCE_FILE_NAME STRING,
+# MAGIC INGESTION_USER   STRING
 # MAGIC )
 # MAGIC USING DELTA
 # MAGIC LOCATION "abfss://bronze@${storageName}.dfs.core.windows.net/ventas"
@@ -136,12 +140,17 @@ dbutils.fs.rm(f"abfss://gold@{storageName}.dfs.core.windows.net/",True)
 
 # COMMAND ----------
 
+# DBTITLE 1,Cell 20 - Tabla bronze.productos
 # MAGIC %sql
+# MAGIC -- Tabla Delta bronze para productos (items.csv)
+# MAGIC -- Campos de negocio + campos de auditoría mínimos: INGESTION_DATE, SOURCE_FILE_NAME, INGESTION_USER
 # MAGIC CREATE TABLE IF NOT EXISTS cat_ftr_smartdata_dev.bronze.productos (
-# MAGIC ID_ITEM STRING,
-# MAGIC PRODUCT STRING,
-# MAGIC CATEGORY STRING,
-# MAGIC INGESTION_DATE TIMESTAMP
+# MAGIC ID_ITEM          STRING,
+# MAGIC PRODUCT          STRING,
+# MAGIC CATEGORY         STRING,
+# MAGIC INGESTION_DATE   TIMESTAMP,
+# MAGIC SOURCE_FILE_NAME STRING,
+# MAGIC INGESTION_USER   STRING
 # MAGIC )
 # MAGIC USING DELTA
 # MAGIC LOCATION "abfss://bronze@${storageName}.dfs.core.windows.net/productos"

@@ -102,16 +102,39 @@ Los datos provienen de dos archivos planos cargados al contenedor `raw`:
 ### 2. Configuración del ambiente y Unity Catalog
 El notebook `proceso/00.PrepararAmbiente.ipynb` se ejecuta una sola vez para crear las External Locations, el catálogo `cat_ftr_smartdata_dev`, los esquemas (`raw`, `bronze`, `silver`, `golden`) y las tablas Delta vacías. El notebook `seguridad/01.Grants.ipynb` documenta los permisos (GRANT/REVOKE) sobre catálogo, esquemas, tablas y External Locations.
 
-### 3. Ingesta de los datasets
-Los notebooks `proceso/01.IngestaProductos.ipynb` y `proceso/01IngestaVentas.ipynb` leen `items.csv` y `orders.csv` desde el contenedor `raw` y los escriben como tablas Delta en `bronze.productos` y `bronze.ventas`, agregando la columna `INGESTION_DATE`.
+---
 
-### 4. Pipeline de transformación
-A partir de las tablas Bronze, el pipeline construye la capa Silver y luego las tablas Golden mediante los notebooks de la carpeta `proceso/`.
+## Capa Bronze
 
-### 5. Job configurado
-En Databricks Workflows se configuró el job `job-ftr-smartdata-proyectofinal-dev-01`, que encadena los 5 notebooks en orden (ingestas → transformación Silver → agregaciones Golden) respetando sus dependencias.
+La capa Bronze representa el primer nivel de la arquitectura Medallion. En esta etapa los datos crudos del contenedor `raw` son ingeridos **sin transformaciones de negocio**, preservando la fidelidad del origen y enriqueciéndose únicamente con campos de auditoría para trazabilidad.
 
-![Flujo de Trabajo](evidencias/Databricks/Worflow_Ejecucion.png)
+### Entradas (Inputs)
+
+| Archivo fuente | Ubicación (ADLS Gen2) | Tabla Delta destino |
+|---|---|---|
+| `items.csv` | `abfss://raw@<storage>.dfs.core.windows.net/items.csv` | `cat_ftr_smartdata_dev.bronze.productos` |
+| `orders.csv` | `abfss://raw@<storage>.dfs.core.windows.net/orders.csv` | `cat_ftr_smartdata_dev.bronze.ventas` |
+
+### Proceso de ingesta
+
+Los notebooks `01.IngestaProductos.ipynb` y `01.IngestaVentas.ipynb` ejecutan el siguiente flujo:
+
+1. **Lectura parametrizada** — Los parámetros de conexión (`container`, `catalogo`, `esquema`, `storageName`) se obtienen desde `dbutils.widgets`, construyendo dinámicamente la ruta ABFSS del archivo fuente sin valores fijos en el código.
+2. **Esquema explícito** — Se define un `StructType` antes de la lectura para garantizar el tipado correcto de cada columna y evitar inconsistencias por inferencia automática.
+3. **Enriquecimiento con auditoría** — Se agregan columnas de trazabilidad mediante `withColumn` sin modificar los datos originales.
+4. **Escritura en Delta** — El DataFrame se persiste en la tabla Delta de bronze con `mode("overwrite")` y `overwriteSchema=true`, permitiendo actualizaciones de esquema sin intervención manual.
+
+### Campos de auditoría añadidos
+
+| Campo | Tipo | Descripción | Función Spark |
+|---|---|---|---|
+| `INGESTION_DATE` | `timestamp` | Fecha y hora exacta en que el registro fue cargado en bronze | `current_timestamp()` |
+| `SOURCE_FILE_NAME` | `string` | Ruta completa del archivo fuente en ADLS (trazabilidad de origen) | `col("_metadata.file_path")` |
+| `INGESTION_USER` | `string` | Usuario o service principal que ejecutó la ingesta | `current_user()` |
+
+> Estos tres campos permiten auditar **cuándo**, **desde dónde** y **quién** realizó cada carga, sin alterar los datos originales del negocio.
+
+---
 
 ## Tablas Golden
 
@@ -144,6 +167,12 @@ Ambas tablas se escriben con `coalesce(4)` y `mode("overwrite")` mediante `inser
 
 ---
 
+### 5. Job configurado
+En Databricks Workflows se configuró el job `job-ftr-smartdata-proyectofinal-dev-01`, que encadena los 5 notebooks en orden (ingestas → transformación Silver → agregaciones Golden) respetando sus dependencias.
+
+![Flujo de Trabajo](evidencias/Databricks/Worflow_Ejecucion.png)
+
+---
 ## Dashboard
 
 Sobre las tablas Golden se construyó un dashboard en Power BI (`dashboard/Dashboard.pbix`) con la carga de datos desde Databricks y dos vistas principales: ventas por mes y ventas por categoría y mes.
