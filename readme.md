@@ -339,7 +339,52 @@ El job **job-ftr-smartdata-proyectofinal-dev-01** coordina la ejecución complet
 ---
 ## 7) Dashboard
 
-Sobre las tablas Golden se construyó un dashboard en Power BI (`dashboard/Dashboard.pbix`) con la carga de datos desde Databricks y dos vistas principales: ventas por mes y ventas por categoría y mes.
+El archivo `dashboard/PowerBI_ProyectoFinal.pbix` contiene el informe conectado en tiempo real a las tablas Gold de Databricks mediante **Delta Sharing**, sin necesidad de exportar ni mover datos fuera del Lakehouse.
+
+### Conexión vía Delta Sharing
+
+Delta Sharing es el protocolo abierto de Databricks para compartir tablas Delta Lake con clientes externos (como Power BI) de forma segura y sin duplicar datos. El flujo de conexión configurado es:
+
+1. **Crear el Share en Unity Catalog** — se agrega un Share que expone las 3 tablas Gold del catálogo `cat_ftr_smartdata_dev.golden`.
+2. **Crear el Recipient** — se genera un destinatario con su enlace de activación (`.share` credential file).
+3. **Conectar Power BI Desktop** — mediante el conector nativo **Databricks (Delta Sharing)**, se proporciona el enlace de activación y se cargan las tablas directamente desde ADLS Gen2 sin intermediarios.
+
+### Tablas Gold compartidas via Delta Sharing
+
+| Tabla | Granularidad | Uso principal en Power BI |
+|---|---|---|
+| `golden.ventas_diarias_tienda` | Tienda + Día | Tendencia de ingresos, ranking de tiendas, evolución temporal |
+| `golden.ventas_categoria_mes` | Categoría + Mes | Mix de categorías, estacionalidad, efectividad promocional |
+| `golden.kpi_vendedor_mes` | Vendedor + Tienda + Mes | Ranking de vendedores, análisis de descuentos por comercial |
+
+### Estructura del informe (2 hojas)
+
+**Hoja 1 — Resumen Ejecutivo**
+Respode: *¿cómo va el negocio en el período seleccionado?*
+Slicers de cabecera: `ANIO`, `TRIMESTRE`, `MES`, `TIENDA`.
+
+| Visual | Tipo | Descripción |
+|---|---|---|
+| KPI cards | Tarjetas | `INGRESO_NETO`, `TICKET_PROMEDIO`, `NUM_PEDIDOS`, `INGRESO_DESCUENTO` |
+| Evolución de ingresos | Línea | `INGRESO_NETO` por `FECHA` |
+| Comparativa de tiendas | Barras horizontales | `INGRESO_NETO` por `TIENDA` (ordenado desc.) |
+| Mix de categorías | Donut | `INGRESO_NETO` por `CATEGORIA` |
+| Impacto del descuento | Barras agrupadas | `INGRESO_BRUTO` vs `INGRESO_NETO` por `MES` |
+
+**Hoja 2 — Análisis Estratégico**
+Responde: *¿dónde están las oportunidades y los riesgos?*
+Slicers de cabecera: `ANIO`, `TRIMESTRE`, `CATEGORIA`, `TIENDA`.
+
+| Visual | Tipo | Descripción |
+|---|---|---|
+| Ranking de vendedores | Tabla ordenada | `ID_VENDEDOR`, `INGRESO_NETO`, `TICKET_PROMEDIO`, `PCT_LINEAS_CON_DESCUENTO` |
+| Mix tipo de venta | Barras apiladas 100% | `NUM_PRECIO_NORMAL` / `NUM_PROMOCION` / `NUM_BONO_EMPRESARIAL` / `NUM_REGALO` por `CATEGORIA` |
+| Tendencia del descuento | Línea doble | `DESCUENTO_MEDIO_PCT` + `PCT_LINEAS_CON_DESCUENTO` por `MES` |
+| Dispersión tienda/valor | Scatter | `PCT_LINEAS_CON_DESCUENTO` vs `TICKET_PROMEDIO` (tamaño burbuja: `NUM_PEDIDOS`) |
+
+![Dashboard Power BI](evidencias/PowerBI/PowerBI_01.png)
+
+![Carga de datos Power BI](evidencias/PowerBI/PowerBI_Cargadata.png)
 
 ---
 
