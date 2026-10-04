@@ -196,34 +196,91 @@ El notebook `proceso/02.Transform_Ventas_Productos.ipynb` ejecuta el siguiente f
 
 ---
 
-## Tablas Golden
+## Capa Gold
 
-### `ventas_diarias_tienda`
-Agregación diaria por tienda (`03Transform_Gold_Ventas_Diarias_Tienda.ipynb`):
+La capa Gold produce tablas **pre-agregadas y desnormalizadas**, optimizadas para consumo directo en Power BI sin necesidad de lógica adicional en los informes. Cada tabla define una perspectiva analítica distinta sobre los datos de ventas.
 
-| Columna | Descripción |
-|---------|-------------|
-| `TIENDA`, `FECHA` | Llaves de agrupación |
-| `NUM_PEDIDOS` | Pedidos distintos del día |
-| `TOTAL_UNIDADES` | Unidades vendidas |
-| `INGRESO_BRUTO` / `INGRESO_NETO` | Ingreso antes y después de aplicar el descuento |
-| `DESCUENTO_MEDIO_PCT` | Descuento promedio (sólo líneas con descuento) |
-| `NUM_LINEAS_CON_DESCUENTO` / `NUM_LINEAS_TOTAL` | Conteo de líneas con y sin descuento |
-| `PCT_LINEAS_CON_DESCUENTO` | Porcentaje de líneas con descuento |
-| `FECHA_ACTUALIZACION` | Marca de tiempo de la carga |
+### Entradas (Inputs)
 
-### `ventas_categoria_mes`
-Agregación mensual por categoría de producto (`03Transform_Gold_Ventas_Categoria_Mes.ipynb`):
+| Tabla fuente | Capa | Descripción |
+|---|---|---|
+| `cat_ftr_smartdata_dev.silver.ventas_productos_categorias` | Silver | Dataset enriquecido y validado con importes, dimensiones temporales y etiquetas ya calculados |
 
-| Columna | Descripción |
-|---------|-------------|
-| `CATEGORIA`, `ANIO`, `MES` | Llaves de agrupación |
-| `NUM_PEDIDOS` / `NUM_ARTICULOS` / `TOTAL_UNIDADES` | Métricas de volumen |
-| `INGRESO_BRUTO` / `INGRESO_NETO` / `PRECIO_PROMEDIO` | Métricas de ingresos |
-| `NUM_LINEAS_CON_DESCUENTO` / `PCT_LINEAS_CON_DESCUENTO` / `DESCUENTO_MEDIO_PCT` | Métricas de descuento |
-| `NUM_PRECIO_NORMAL` / `NUM_PROMOCION` / ... | Conteo de líneas por etiqueta de descuento |
+### Proceso de transformación
 
-Ambas tablas se escriben con `coalesce(4)` y `mode("overwrite")` mediante `insertInto`.
+| Notebook | Tabla Gold producida | Granularidad |
+|---|---|---|
+| `03.Transform_Gold_Ventas_Diarias_Tienda.ipynb` | `ventas_diarias_tienda` | Tienda + Día |
+| `03.Transform_Gold_Ventas_Categoria_Mes.ipynb` | `ventas_categoria_mes` | Categoría + Mes |
+| `03.Transform_Gold_KPI_Vendedor_Mes.ipynb` | `kpi_vendedor_mes` | Vendedor + Tienda + Mes |
+
+En todos los casos se consumen directamente `IMPORTE_BRUTO`, `IMPORTE_NETO`, `ANIO`, `MES` y `TRIMESTRE` desde Silver — sin recalcular desde `PRECIO` y `DESCUENTO`.
+
+---
+
+### Tabla `ventas_diarias_tienda`
+
+KPIs diarios por tienda para análisis de tendencia y rendimiento de puntos de venta. `ANIO`, `MES` y `TRIMESTRE` se incluyen en la granularidad para habilitar filtros de tiempo en Power BI sin tabla de fechas adicional.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `TIENDA` | `string` | Nombre de la tienda |
+| `FECHA` | `date` | Fecha de la venta |
+| `ANIO` / `MES` / `TRIMESTRE` | `int` | Dimensiones temporales para filtros en Power BI |
+| `NUM_PEDIDOS` | `int` | Pedidos distintos del día |
+| `TOTAL_UNIDADES` | `int` | Unidades vendidas |
+| `NUM_LINEAS_TOTAL` | `int` | Líneas de pedido totales |
+| `INGRESO_BRUTO` | `double` | Suma de IMPORTE_BRUTO |
+| `INGRESO_NETO` | `double` | Suma de IMPORTE_NETO |
+| `INGRESO_DESCUENTO` | `double` | Monto total de descuento aplicado |
+| `DESCUENTO_MEDIO_PCT` | `double` | Descuento promedio en líneas con descuento |
+| `NUM_LINEAS_CON_DESCUENTO` | `int` | Líneas con descuento > 0 |
+| `PCT_LINEAS_CON_DESCUENTO` | `double` | Porcentaje de líneas con descuento |
+| `TICKET_PROMEDIO` | `double` | Ingreso neto / número de pedidos |
+
+---
+
+### Tabla `ventas_categoria_mes`
+
+KPIs mensuales por categoría de producto con mix completo de tipo de venta. Útil para comparativas de categorías, estacionalidad y efectividad de promociones en Power BI.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `CATEGORIA` | `string` | Categoría de producto |
+| `ANIO` / `MES` / `TRIMESTRE` | `int` | Dimensiones temporales |
+| `NUM_PEDIDOS` / `NUM_ARTICULOS` / `TOTAL_UNIDADES` | `int` | Métricas de volumen |
+| `INGRESO_BRUTO` / `INGRESO_NETO` | `double` | Métricas de ingresos |
+| `TICKET_PROMEDIO` / `PRECIO_PROMEDIO` | `double` | Métricas de precio |
+| `NUM_LINEAS_CON_DESCUENTO` / `PCT_LINEAS_CON_DESCUENTO` / `DESCUENTO_MEDIO_PCT` | `int` / `double` | Métricas de descuento |
+| `NUM_PRECIO_NORMAL` / `NUM_PROMOCION` / `NUM_BONO_EMPRESARIAL` / `NUM_REGALO` | `int` | Conteo de líneas por etiqueta de descuento |
+
+---
+
+### Tabla `kpi_vendedor_mes`
+
+KPIs mensuales por vendedor y tienda para análisis de rendimiento comercial individual. Habilita rankings de vendedores, comparativas entre tiendas y detección de outliers en Power BI.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `ID_VENDEDOR` | `string` | Identificador del vendedor |
+| `TIENDA` | `string` | Tienda a la que pertenece |
+| `ANIO` / `MES` / `TRIMESTRE` | `int` | Dimensiones temporales |
+| `NUM_PEDIDOS` / `NUM_ARTICULOS_DISTINTOS` / `TOTAL_UNIDADES` / `NUM_LINEAS` | `int` | Métricas de volumen |
+| `INGRESO_BRUTO` / `INGRESO_NETO` / `INGRESO_DESCUENTO` | `double` | Métricas de ingresos |
+| `DESCUENTO_MEDIO_PCT` / `PCT_LINEAS_CON_DESCUENTO` | `double` | Métricas de descuento |
+| `TICKET_PROMEDIO` | `double` | Ingreso neto / número de pedidos |
+| `NUM_PRECIO_NORMAL` / `NUM_PROMOCION` / `NUM_BONO_EMPRESARIAL` / `NUM_REGALO` | `int` | Mix de tipo de venta |
+
+---
+
+### Campos de auditoría Gold
+
+| Campo | Tipo | Descripción | Función Spark |
+|---|---|---|---|
+| `FECHA_ACTUALIZACION` | `timestamp` | Cuándo se calculó la agregación Gold | `current_timestamp()` |
+| `INGESTION_USER` | `string` | Usuario o SP que ejecutó el pipeline Gold | `current_user()` |
+
+> Los campos de auditoría Silver (`FECHA_PROCESO`, `INGESTION_USER` a nivel registro) **no se propagan** a Gold — la capa Gold agrega filas y pierde la granularidad individual. El `INGESTION_USER` de Gold identifica quién lanzó el **proceso de agregación**, no quién ingirió el dato original.
 
 ---
 

@@ -203,19 +203,28 @@ dbutils.fs.rm(f"abfss://gold@{storageName}.dfs.core.windows.net/",True)
 
 # COMMAND ----------
 
+# DBTITLE 1,Tabla golden.ventas_diarias_tienda
 # MAGIC %sql
+# MAGIC -- Tabla Gold: KPIs diarios por tienda para Power BI
+# MAGIC -- ANIO/MES/TRIMESTRE permiten filtros de tiempo directos sin tabla de fechas adicional
 # MAGIC CREATE TABLE IF NOT EXISTS cat_ftr_smartdata_dev.golden.ventas_diarias_tienda (
-# MAGIC   TIENDA                    STRING,
-# MAGIC   FECHA                     DATE,
-# MAGIC   NUM_PEDIDOS               INT,
-# MAGIC   TOTAL_UNIDADES            INT,
-# MAGIC   INGRESO_BRUTO             DOUBLE,
-# MAGIC   INGRESO_NETO              DOUBLE,
-# MAGIC   DESCUENTO_MEDIO_PCT       DOUBLE,
-# MAGIC   NUM_LINEAS_CON_DESCUENTO  INT,
-# MAGIC   NUM_LINEAS_TOTAL          INT,
-# MAGIC   PCT_LINEAS_CON_DESCUENTO  DOUBLE,
-# MAGIC   FECHA_ACTUALIZACION       TIMESTAMP
+# MAGIC   TIENDA                    STRING   COMMENT 'Nombre de la tienda',
+# MAGIC   FECHA                     DATE     COMMENT 'Fecha de la venta',
+# MAGIC   ANIO                      INT      COMMENT 'Año (para filtros en Power BI)',
+# MAGIC   MES                       INT      COMMENT 'Mes (para filtros en Power BI)',
+# MAGIC   TRIMESTRE                 INT      COMMENT 'Trimestre 1-4 (para análisis trimestral)',
+# MAGIC   NUM_PEDIDOS               INT      COMMENT 'Pedidos distintos del día',
+# MAGIC   TOTAL_UNIDADES            INT      COMMENT 'Unidades vendidas',
+# MAGIC   NUM_LINEAS_TOTAL          INT      COMMENT 'Líneas de pedido totales',
+# MAGIC   INGRESO_BRUTO             DOUBLE   COMMENT 'Suma de IMPORTE_BRUTO (CANTIDAD x PRECIO)',
+# MAGIC   INGRESO_NETO              DOUBLE   COMMENT 'Suma de IMPORTE_NETO (después de descuento)',
+# MAGIC   INGRESO_DESCUENTO         DOUBLE   COMMENT 'Monto total de descuento aplicado',
+# MAGIC   DESCUENTO_MEDIO_PCT       DOUBLE   COMMENT 'Descuento promedio en líneas con descuento',
+# MAGIC   NUM_LINEAS_CON_DESCUENTO  INT      COMMENT 'Líneas con descuento > 0',
+# MAGIC   PCT_LINEAS_CON_DESCUENTO  DOUBLE   COMMENT 'Porcentaje de líneas con descuento',
+# MAGIC   TICKET_PROMEDIO           DOUBLE    COMMENT 'Ingreso neto / número de pedidos',
+# MAGIC   FECHA_ACTUALIZACION       TIMESTAMP COMMENT 'Cuándo se calculó la agregación Gold',
+# MAGIC   INGESTION_USER            STRING    COMMENT 'Usuario o SP que ejecutó el pipeline Gold'
 # MAGIC )
 # MAGIC USING DELTA
 # MAGIC LOCATION "abfss://gold@${storageName}.dfs.core.windows.net/ventas_diarias_tienda"
@@ -223,28 +232,64 @@ dbutils.fs.rm(f"abfss://gold@{storageName}.dfs.core.windows.net/",True)
 
 # COMMAND ----------
 
+# DBTITLE 1,Tabla golden.ventas_categoria_mes
 # MAGIC %sql
+# MAGIC -- Tabla Gold: KPIs mensuales por categoría con mix de tipo de venta para Power BI
 # MAGIC CREATE TABLE IF NOT EXISTS cat_ftr_smartdata_dev.golden.ventas_categoria_mes (
-# MAGIC   CATEGORIA                 STRING,
-# MAGIC   ANIO                      INT,
-# MAGIC   MES                       INT,
-# MAGIC   NUM_PEDIDOS               INT,
-# MAGIC   NUM_ARTICULOS             INT,
-# MAGIC   TOTAL_UNIDADES            INT,
-# MAGIC   NUM_LINEAS_TOTAL          INT,
-# MAGIC   INGRESO_BRUTO             DOUBLE,
-# MAGIC   INGRESO_NETO              DOUBLE,
-# MAGIC   TICKET_PROMEDIO           DOUBLE,
-# MAGIC   PRECIO_PROMEDIO           DOUBLE,
-# MAGIC   NUM_LINEAS_CON_DESCUENTO  INT,
-# MAGIC   PCT_LINEAS_CON_DESCUENTO  DOUBLE,
-# MAGIC   DESCUENTO_MEDIO_PCT       DOUBLE,
-# MAGIC   NUM_PRECIO_NORMAL         INT,
-# MAGIC   NUM_PROMOCION             INT,
-# MAGIC   NUM_BONO_EMPRESARIAL      INT,
-# MAGIC   NUM_REGALO                INT,
-# MAGIC   FECHA_ACTUALIZACION       TIMESTAMP
+# MAGIC   CATEGORIA                 STRING   COMMENT 'Categoría de producto',
+# MAGIC   ANIO                      INT      COMMENT 'Año',
+# MAGIC   MES                       INT      COMMENT 'Mes',
+# MAGIC   TRIMESTRE                 INT      COMMENT 'Trimestre 1-4',
+# MAGIC   NUM_PEDIDOS               INT      COMMENT 'Pedidos distintos del mes',
+# MAGIC   NUM_ARTICULOS             INT      COMMENT 'Artículos distintos vendidos',
+# MAGIC   TOTAL_UNIDADES            INT      COMMENT 'Unidades vendidas',
+# MAGIC   NUM_LINEAS_TOTAL          INT      COMMENT 'Líneas de pedido totales',
+# MAGIC   INGRESO_BRUTO             DOUBLE   COMMENT 'Suma de IMPORTE_BRUTO',
+# MAGIC   INGRESO_NETO              DOUBLE   COMMENT 'Suma de IMPORTE_NETO',
+# MAGIC   TICKET_PROMEDIO           DOUBLE   COMMENT 'Ingreso neto / número de pedidos',
+# MAGIC   PRECIO_PROMEDIO           DOUBLE   COMMENT 'Precio unitario promedio',
+# MAGIC   NUM_LINEAS_CON_DESCUENTO  INT      COMMENT 'Líneas con descuento > 0',
+# MAGIC   PCT_LINEAS_CON_DESCUENTO  DOUBLE   COMMENT 'Porcentaje de líneas con descuento',
+# MAGIC   DESCUENTO_MEDIO_PCT       DOUBLE   COMMENT 'Descuento promedio en líneas con descuento',
+# MAGIC   NUM_PRECIO_NORMAL         INT      COMMENT 'Líneas con etiqueta Precio Normal',
+# MAGIC   NUM_PROMOCION             INT      COMMENT 'Líneas con etiqueta Promoción',
+# MAGIC   NUM_BONO_EMPRESARIAL      INT      COMMENT 'Líneas con etiqueta Bono Empresarial',
+# MAGIC   NUM_REGALO                INT       COMMENT 'Líneas con etiqueta Regalo',
+# MAGIC   FECHA_ACTUALIZACION       TIMESTAMP COMMENT 'Cuándo se calculó la agregación Gold',
+# MAGIC   INGESTION_USER            STRING    COMMENT 'Usuario o SP que ejecutó el pipeline Gold'
 # MAGIC )
 # MAGIC USING DELTA
 # MAGIC LOCATION "abfss://gold@${storageName}.dfs.core.windows.net/ventas_categoria_mes"
 # MAGIC
+
+# COMMAND ----------
+
+# DBTITLE 1,Tabla golden.kpi_vendedor_mes
+# MAGIC %sql
+# MAGIC -- Tabla Gold: KPIs mensuales por vendedor y tienda para análisis de rendimiento comercial en Power BI
+# MAGIC CREATE TABLE IF NOT EXISTS cat_ftr_smartdata_dev.golden.kpi_vendedor_mes (
+# MAGIC   ID_VENDEDOR               STRING   COMMENT 'Identificador del vendedor',
+# MAGIC   TIENDA                    STRING   COMMENT 'Tienda a la que pertenece el vendedor',
+# MAGIC   ANIO                      INT      COMMENT 'Año',
+# MAGIC   MES                       INT      COMMENT 'Mes',
+# MAGIC   TRIMESTRE                 INT      COMMENT 'Trimestre 1-4',
+# MAGIC   NUM_PEDIDOS               INT      COMMENT 'Pedidos distintos gestionados',
+# MAGIC   NUM_ARTICULOS_DISTINTOS   INT      COMMENT 'Artículos distintos vendidos',
+# MAGIC   TOTAL_UNIDADES            INT      COMMENT 'Unidades vendidas',
+# MAGIC   NUM_LINEAS                INT      COMMENT 'Líneas de pedido totales',
+# MAGIC   INGRESO_BRUTO             DOUBLE   COMMENT 'Suma de IMPORTE_BRUTO',
+# MAGIC   INGRESO_NETO              DOUBLE   COMMENT 'Suma de IMPORTE_NETO',
+# MAGIC   INGRESO_DESCUENTO         DOUBLE   COMMENT 'Monto total de descuento aplicado',
+# MAGIC   DESCUENTO_MEDIO_PCT       DOUBLE   COMMENT 'Descuento promedio en líneas con descuento',
+# MAGIC   NUM_LINEAS_CON_DESCUENTO  INT      COMMENT 'Líneas con descuento > 0',
+# MAGIC   PCT_LINEAS_CON_DESCUENTO  DOUBLE   COMMENT 'Porcentaje de líneas con descuento',
+# MAGIC   TICKET_PROMEDIO           DOUBLE   COMMENT 'Ingreso neto / número de pedidos',
+# MAGIC   NUM_PRECIO_NORMAL         INT      COMMENT 'Líneas con etiqueta Precio Normal',
+# MAGIC   NUM_PROMOCION             INT      COMMENT 'Líneas con etiqueta Promoción',
+# MAGIC   NUM_BONO_EMPRESARIAL      INT      COMMENT 'Líneas con etiqueta Bono Empresarial',
+# MAGIC   NUM_REGALO                INT       COMMENT 'Líneas con etiqueta Regalo',
+# MAGIC   FECHA_ACTUALIZACION       TIMESTAMP COMMENT 'Cuándo se calculó la agregación Gold',
+# MAGIC   INGESTION_USER            STRING    COMMENT 'Usuario o SP que ejecutó el pipeline Gold'
+# MAGIC )
+# MAGIC USING DELTA
+# MAGIC LOCATION "abfss://gold@${storageName}.dfs.core.windows.net/kpi_vendedor_mes"
