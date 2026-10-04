@@ -15,7 +15,7 @@ El objetivo es tomar los datos crudos de pedidos y artículos, limpiarlos, unirl
 - Gobernanza de datos mediante External Locations y Storage Credentials de Unity Catalog
 - Reglas de negocio aplicadas con Spark `when` (etiquetado de descuentos) en lugar de UDFs, por rendimiento
 - Agregaciones Golden listas para análisis: ventas diarias por tienda y ventas mensuales por categoría
-- Pipeline orquestado como job de Databricks Workflows (`WF_Medallion_Retail_Prod`) con dependencias entre tareas
+- Pipeline orquestado como job de Databricks Workflows con dependencias entre tareas
 - CI/CD con GitHub Actions que exporta, despliega y ejecuta automáticamente el pipeline en producción
 - Notebook de reversión (`reversion/reverso.ipynb`) para limpiar tablas y datos del esquema completo
 - Visualización de resultados en Power BI sobre las tablas Golden
@@ -60,16 +60,16 @@ Los datos se separan en contenedores distintos por capa dentro de ADLS Gen2 (`ra
 ## Estructura del repositorio
 
 ```
-Proyecto_medallion_retail/
+smartdata-ingenieriadatoseIA/
 ├── proceso/                                    # Notebooks del pipeline (orden de ejecución)
-│   ├── 00PrepararAmbiente.ipynb                # Setup: external locations, catálogo, esquemas y tablas vacías
-│   ├── 01IngestaProductos.ipynb                # raw -> bronze.productos
-│   ├── 01IngestaVentas.ipynb                   # raw -> bronze.ventas
-│   ├── 02Transform_Ventas_Productos.ipynb      # bronze -> silver (join + etiqueta de descuento)
-│   ├── 03Transform_Gold_Ventas_Diarias_Tienda.ipynb   # silver -> golden (agregación diaria por tienda)
-│   └── 03Transform_Gold_Ventas_Categoria_Mes.ipynb    # silver -> golden (agregación mensual por categoría)
+│   ├── 00.PrepararAmbiente.ipynb                # Setup: external locations, catálogo, esquemas y tablas vacías
+│   ├── 01.IngestaProductos.ipynb                # raw -> bronze.productos
+│   ├── 01.IngestaVentas.ipynb                   # raw -> bronze.ventas
+│   ├── 02.Transform_Ventas_Productos.ipynb      # bronze -> silver (join + etiqueta de descuento)
+│   ├── 03.Transform_Gold_Ventas_Diarias_Tienda.ipynb   # silver -> golden (agregación diaria por tienda)
+│   └── 03.Transform_Gold_Ventas_Categoria_Mes.ipynb    # silver -> golden (agregación mensual por categoría)
 ├── seguridad/
-│   └── 4.Grants.ipynb                          # Permisos (GRANT/REVOKE) sobre catálogo, esquemas y external locations
+│   └── 01.Grants.ipynb                          # Permisos (GRANT/REVOKE) sobre catálogo, esquemas y external locations
 ├── reversion/
 │   └── reverso.ipynb                           # Notebook para eliminar tablas y datos del esquema
 ├── datasets/                                   # CSVs de origen (items.csv, orders.csv)
@@ -99,10 +99,10 @@ Los datos provienen de dos archivos planos cargados al contenedor `raw`:
 - Clusters `ClusterDev` (desarrollo) y `ClusterProd` (producción)
 
 ### 2. Configuración del ambiente y Unity Catalog
-El notebook `proceso/00PrepararAmbiente.ipynb` se ejecuta una sola vez para crear las External Locations, el catálogo `catalog_dev`, los esquemas (`raw`, `bronze`, `silver`, `golden`) y las tablas Delta vacías. El notebook `seguridad/4.Grants.ipynb` documenta los permisos (GRANT/REVOKE) sobre catálogo, esquemas, tablas y External Locations.
+El notebook `proceso/00.PrepararAmbiente.ipynb` se ejecuta una sola vez para crear las External Locations, el catálogo `catalog_dev`, los esquemas (`raw`, `bronze`, `silver`, `golden`) y las tablas Delta vacías. El notebook `seguridad/4.Grants.ipynb` documenta los permisos (GRANT/REVOKE) sobre catálogo, esquemas, tablas y External Locations.
 
 ### 3. Ingesta de los datasets
-Los notebooks `proceso/01IngestaProductos.ipynb` y `proceso/01IngestaVentas.ipynb` leen `items.csv` y `orders.csv` desde el contenedor `raw` y los escriben como tablas Delta en `bronze.productos` y `bronze.ventas`, agregando la columna `INGESTION_DATE`.
+Los notebooks `proceso/01.IngestaProductos.ipynb` y `proceso/01IngestaVentas.ipynb` leen `items.csv` y `orders.csv` desde el contenedor `raw` y los escriben como tablas Delta en `bronze.productos` y `bronze.ventas`, agregando la columna `INGESTION_DATE`.
 
 ### 4. Pipeline de transformación
 A partir de las tablas Bronze, el pipeline construye la capa Silver y luego las tablas Golden mediante los notebooks de la carpeta `proceso/`.
@@ -180,12 +180,8 @@ Los secrets configurados en el repositorio son:
 
 Sobre las tablas Golden se construyó un dashboard en Power BI (`dashboard/Dashboard.pbix`) con la carga de datos desde Databricks y dos vistas principales: ventas por mes y ventas por categoría y mes.
 
-![Carga de datos en Power BI](evidencias/PBI%20Carga%20PowerBi.png)
-![Dashboard de ventas por mes](evidencias/PBI%20Dashboard%20Ventas%20por%20mes.png)
-![Dashboard de ventas por categoría y mes](evidencias/PBI%20Dashboard%20Categoria%20por%20mes.png)
-
 ---
 
 ## Autor
 
-Proyecto desarrollado por **André Muñoz** como entregable del curso de Ingeniería de Datos con Azure Databricks de SmartData.
+Proyecto desarrollado por **Frank Torres** como entregable del curso de Ingeniería de Datos e IA en SmartData.
