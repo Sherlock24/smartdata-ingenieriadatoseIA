@@ -85,6 +85,7 @@ Los datos provienen de dos archivos planos cargados al contenedor `raw`:
 | Azure Key Vault | Gestión de secretos y credenciales del workspace |
 | Azure Databricks Workspace | Workspace con Unity Catalog habilitado |
 
+![Flujo de Trabajo](evidencias/Azure/Contenedores.png)
 ![Flujo de Trabajo](evidencias/Azure/resource groups detalle.png)
 
 ### Databricks
@@ -101,6 +102,9 @@ Los datos provienen de dos archivos planos cargados al contenedor `raw`:
 | Delta Sharing | Share + Recipient | Publicación de las 3 tablas Gold a Power BI Desktop sin mover datos |
 | Notebooks | `proceso/` (7), `seguridad/` (1), `reversion/` (1) | Lógica completa del pipeline por capa |
 | CI/CD | GitHub Actions | Despliegue y ejecución automática del pipeline en producción |
+
+![Flujo de Trabajo](evidencias/Databricks/Credential.png)
+![Flujo de Trabajo](evidencias/Databricks/External Locations.png)
 
 ## 4) Configuración inicial del ambiente
 
@@ -122,9 +126,8 @@ Los datos se separan en contenedores distintos por capa dentro de ADLS Gen2 (`ra
 | `silver` | `silver`        | Tabla limpia y unida `ventas_productos_categorias` |
 | `golden` | `golden`        | Tablas agregadas `ventas_diarias_tienda` y `ventas_categoria_mes` |
 
-![Flujo de Trabajo](evidencias/Azure/Contenedores.png)
-![Flujo de Trabajo](evidencias/Databricks/Credential.png)
-![Flujo de Trabajo](evidencias/Databricks/External Locations.png)
+
+
 
 ---
 
