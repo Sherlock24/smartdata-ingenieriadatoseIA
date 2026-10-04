@@ -11,11 +11,11 @@ El objetivo es tomar los datos crudos de pedidos y artículos, limpiarlos, unirl
 - Arquitectura Medallion completa (Bronze → Silver → Golden) sobre Unity Catalog
 - Ingesta parametrizada con `dbutils.widgets` (catálogo, esquemas, nombre del storage) — sin valores fijos en el código
 - Gobernanza de datos mediante External Locations y Storage Credentials de Unity Catalog
-- Reglas de negocio aplicadas con Spark `when` (etiquetado de descuentos) en lugar de UDFs, por rendimiento
+- Reglas de negocio aplicadas
 - Agregaciones Golden listas para análisis: ventas diarias por tienda y ventas mensuales por categoría
 - Pipeline orquestado como job de Databricks Workflows con dependencias entre tareas
 - CI/CD con GitHub Actions que exporta, despliega y ejecuta automáticamente el pipeline en producción
-- Notebook de reversión (`reversion/reverso.ipynb`) para limpiar tablas y datos del esquema completo
+- Notebook de reversión (`reversion/rollback.ipynb`) para limpiar tablas y datos del esquema completo
 - Visualización de resultados en Power BI sobre las tablas Golden
 
 ---
@@ -85,15 +85,39 @@ Los datos provienen de dos archivos planos cargados al contenedor `raw`:
 | `items.csv` | Catálogo de productos — ID, nombre y categoría | 39.194 |
 | `orders.csv` | Pedidos de venta — tienda, fecha, artículo, cantidad, precio, descuento, vendedor y estado | 1.090.380 |
 
-## 3) Recursos de Azure utilizados
-- Storage Account con Hierarchical Namespace habilitado (ADLS Gen2)
-- Contenedores: `raw`, `bronze`, `silver`, `golden`
-- Azure Databricks Workspace con Unity Catalog habilitado
-- External Locations (raw,bronze,silver,gold,metastore) y Storage Credential `cred-ftr-smartdata-azure-dev-01`
-- Clusters `cl-ftr-smartdata-dev-01` (desarrollo)
+## 3) Recursos utilizados
 
-## 4) Configuración del ambiente y Unity Catalog
-El notebook `proceso/00.PrepararAmbiente.ipynb` se ejecuta una sola vez para crear las External Locations, el catálogo `cat_ftr_smartdata_dev`, los esquemas (`raw`, `bronze`, `silver`, `golden`) y las tablas Delta vacías. El notebook `seguridad/01.Grants.ipynb` documenta los permisos (GRANT/REVOKE) sobre catálogo, esquemas, tablas y External Locations.
+### Azure
+
+| Recurso | Detalle |
+|---|---|
+| Storage Account (ADLS Gen2) | `adlsftrsmardatadev01` — Hierarchical Namespace habilitado |
+| Contenedores ADLS | `raw`, `bronze`, `silver`, `golden` — uno por capa Medallion |
+| Azure Key Vault | Gestión de secretos y credenciales del workspace |
+| Azure Databricks Workspace | Workspace con Unity Catalog habilitado |
+
+![Flujo de Trabajo](evidencias/Azure/resource groups detalle.png)
+
+### Databricks
+
+| Recurso | Nombre | Propósito |
+|---|---|---|
+| Cluster | `cl-ftr-smartdata-dev-01` | Cómputo para desarrollo y ejecución del pipeline |
+| Storage Credential | `cred-ftr-smartdata-azure-dev-01` | Credencial unificada de acceso a ADLS Gen2 |
+| External Locations | `extl-raw`, `extl-bronze`, `extl-silver`, `extl-golden`, `extl-metastore` | Una por contenedor ADLS + metastore |
+| Unity Catalog — Catálogo | `cat_ftr_smartdata_dev` | Catálogo central del proyecto |
+| Unity Catalog — Esquemas | `raw`, `bronze`, `silver`, `golden` | Un esquema por capa Medallion |
+| Unity Catalog — Tablas Delta | 2 Bronze + 1 Silver + 3 Gold | Tablas persistidas en Delta Lake con campos de auditoría por capa |
+| Job de orquestación | `job-ftr-smartdata-proyectofinal-dev-01` | 6 tareas en DAG: pipeline end-to-end Bronze → Silver → Gold |
+| Delta Sharing | Share + Recipient | Publicación de las 3 tablas Gold a Power BI Desktop sin mover datos |
+| Notebooks | `proceso/` (7), `seguridad/` (1), `reversion/` (1) | Lógica completa del pipeline por capa |
+| CI/CD | GitHub Actions | Despliegue y ejecución automática del pipeline en producción |
+
+## 4) Configuración inicial del ambiente
+
+El notebook `00.PrepararAmbiente` se ejecuta **una sola vez** para provisionar el ambiente completo: External Locations, Storage Credential, catálogo `cat_ftr_smartdata_dev`, los 4 esquemas y todas las tablas Delta vacías con su DDL definitivo (incluyendo campos de auditoría por capa).
+
+El notebook `01.Grants` centraliza toda la gestión de permisos mediante `GRANT`/`REVOKE` sobre catálogo, esquemas, tablas, job de orquestación y Delta Sharing, cubriendo el usuario `yinfaulk_test_24@hotmail.com` y el grupo `Developers`.
 
 ---
 
@@ -110,6 +134,9 @@ Los datos se separan en contenedores distintos por capa dentro de ADLS Gen2 (`ra
 | `golden` | `golden`        | Tablas agregadas `ventas_diarias_tienda` y `ventas_categoria_mes` |
 
 ![Flujo de Trabajo](evidencias/Azure/Contenedores.png)
+![Flujo de Trabajo](evidencias/Databricks/Credential.png)
+![Flujo de Trabajo](evidencias/Databricks/External Locations.png)
+
 ---
 
 ## 5.1 Capa Bronze
@@ -371,6 +398,8 @@ Slicers de cabecera: `ANIO`, `TRIMESTRE`, `MES`, `TIENDA`.
 | Mix de categorías | Donut | `INGRESO_NETO` por `CATEGORIA` |
 | Impacto del descuento | Barras agrupadas | `INGRESO_BRUTO` vs `INGRESO_NETO` por `MES` |
 
+![Dashboard Power BI](evidencias/PowerBI/PowerBI_01.png)
+
 **Hoja 2 — Análisis Estratégico**
 Responde: *¿dónde están las oportunidades y los riesgos?*
 Slicers de cabecera: `ANIO`, `TRIMESTRE`, `CATEGORIA`, `TIENDA`.
@@ -382,9 +411,7 @@ Slicers de cabecera: `ANIO`, `TRIMESTRE`, `CATEGORIA`, `TIENDA`.
 | Tendencia del descuento | Línea doble | `DESCUENTO_MEDIO_PCT` + `PCT_LINEAS_CON_DESCUENTO` por `MES` |
 | Dispersión tienda/valor | Scatter | `PCT_LINEAS_CON_DESCUENTO` vs `TICKET_PROMEDIO` (tamaño burbuja: `NUM_PEDIDOS`) |
 
-![Dashboard Power BI](evidencias/PowerBI/PowerBI_01.png)
-
-![Carga de datos Power BI](evidencias/PowerBI/PowerBI_Cargadata.png)
+![Dashboard Power BI](evidencias/PowerBI/PowerBI_02.png)
 
 ---
 
