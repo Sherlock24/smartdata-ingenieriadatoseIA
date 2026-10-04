@@ -4,8 +4,6 @@ Este proyecto consiste en un pipeline completo de ingeniería de datos construid
 
 El objetivo es tomar los datos crudos de pedidos y artículos, limpiarlos, unirlos y transformarlos hasta llegar a tablas analíticas listas para el reporting (descuentos aplicados, ingresos por tienda y por categoría, etc.).
 
-![Flujo de Trabajo](evidencias/Azure/Contenedores.png)
-
 ---
 
 ## Características principales
@@ -93,7 +91,7 @@ El notebook `proceso/00.PrepararAmbiente.ipynb` se ejecuta una sola vez para cre
 
 ## 5) Arquitectura (Medallion)
 
-Los datos se separan en contenedores distintos por capa dentro de ADLS Gen2 (`raw`, `bronze`, `silver`, `golden`), cada uno gobernado mediante una **External Location** (`extl-raw`, `extl-bronze`, `extl-silver`, `extl-golden`, `extl-catalog`) respaldada por una **Storage Credential** llamada `credential`. Sobre esa base se organiza el catálogo `catalog_dev` con un esquema por capa:
+Los datos se separan en contenedores distintos por capa dentro de ADLS Gen2 (`raw`, `bronze`, `silver`, `golden`), cada uno gobernado mediante una **External Location** (`extl-raw`, `extl-bronze`, `extl-silver`, `extl-golden`, `extl-metastore`) respaldada por una **Storage Credential**. Sobre esa base se organiza el catálogo con un esquema por capa:
 
 | Esquema  | Contenedor ADLS | Contenido |
 |----------|-----------------|-----------|
@@ -102,6 +100,7 @@ Los datos se separan en contenedores distintos por capa dentro de ADLS Gen2 (`ra
 | `silver` | `silver`        | Tabla limpia y unida `ventas_productos_categorias` |
 | `golden` | `golden`        | Tablas agregadas `ventas_diarias_tienda` y `ventas_categoria_mes` |
 
+![Flujo de Trabajo](evidencias/Azure/Contenedores.png)
 ---
 
 ## 5.1 Capa Bronze
