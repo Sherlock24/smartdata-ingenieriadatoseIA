@@ -44,7 +44,7 @@ Para esto fue necesario configurar un Data Lake en Azure (ADLS Gen2) con un cont
 
 ## Arquitectura (Medallion)
 
-![Workflow](evidencias/WorkFLow.png)
+![Workflow](evidencias/Databricks/WorkfLow.png)
 
 Los datos se separan en contenedores distintos por capa dentro de ADLS Gen2 (`raw`, `bronze`, `silver`, `golden`), cada uno gobernado mediante una **External Location** (`extl-raw`, `extl-bronze`, `extl-silver`, `extl-golden`, `extl-catalog`) respaldada por una **Storage Credential** llamada `credential`. Sobre esa base se organiza el catálogo `catalog_dev` con un esquema por capa:
 
@@ -77,7 +77,8 @@ smartdata-ingenieriadatoseIA/
 │   └── Dashboard.pbix                          # Dashboard de Power BI sobre las tablas Golden
 ├── evidencias/                                 # Capturas de los recursos, workflows y dashboards
 └── .github/workflows/
-    └── deploy-produccion.yml                   # CI/CD: despliegue y ejecución del pipeline en producción
+    └── 
+# CI/CD: despliegue y ejecución del pipeline en producción
 ```
 
 ---
@@ -95,11 +96,11 @@ Los datos provienen de dos archivos planos cargados al contenedor `raw`:
 - Storage Account con Hierarchical Namespace habilitado (ADLS Gen2)
 - Contenedores: `raw`, `bronze`, `silver`, `golden`
 - Azure Databricks Workspace con Unity Catalog habilitado
-- External Locations (`extl-raw`, `extl-bronze`, `extl-silver`, `extl-golden`, `extl-catalog`) y Storage Credential `credential`
-- Clusters `ClusterDev` (desarrollo) y `ClusterProd` (producción)
+- External Locations (raw,bronze,silver,gold,metastore) y Storage Credential `cred-ftr-smartdata-azure-dev-01`
+- Clusters `cl-ftr-smartdata-dev-01` (desarrollo)
 
 ### 2. Configuración del ambiente y Unity Catalog
-El notebook `proceso/00.PrepararAmbiente.ipynb` se ejecuta una sola vez para crear las External Locations, el catálogo `catalog_dev`, los esquemas (`raw`, `bronze`, `silver`, `golden`) y las tablas Delta vacías. El notebook `seguridad/4.Grants.ipynb` documenta los permisos (GRANT/REVOKE) sobre catálogo, esquemas, tablas y External Locations.
+El notebook `proceso/00.PrepararAmbiente.ipynb` se ejecuta una sola vez para crear las External Locations, el catálogo `cat_ftr_smartdata_dev`, los esquemas (`raw`, `bronze`, `silver`, `golden`) y las tablas Delta vacías. El notebook `seguridad/01.Grants.ipynb` documenta los permisos (GRANT/REVOKE) sobre catálogo, esquemas, tablas y External Locations.
 
 ### 3. Ingesta de los datasets
 Los notebooks `proceso/01.IngestaProductos.ipynb` y `proceso/01IngestaVentas.ipynb` leen `items.csv` y `orders.csv` desde el contenedor `raw` y los escriben como tablas Delta en `bronze.productos` y `bronze.ventas`, agregando la columna `INGESTION_DATE`.
@@ -108,30 +109,9 @@ Los notebooks `proceso/01.IngestaProductos.ipynb` y `proceso/01IngestaVentas.ipy
 A partir de las tablas Bronze, el pipeline construye la capa Silver y luego las tablas Golden mediante los notebooks de la carpeta `proceso/`.
 
 ### 5. Job configurado
-En Databricks Workflows se configuró el job `WF_Medallion_Retail_Prod`, que encadena los 6 notebooks en orden (preparación → ingestas → transformación Silver → agregaciones Golden) respetando sus dependencias.
+En Databricks Workflows se configuró el job `job-ftr-smartdata-proyectofinal-dev-01`, que encadena los 5 notebooks en orden (ingestas → transformación Silver → agregaciones Golden) respetando sus dependencias.
 
-![Workflow de producción](evidencias/WorkflowProduccion.png)
-
----
-
-## Transformaciones aplicadas
-
-En la capa Silver (`02Transform_Ventas_Productos.ipynb`) se filtran los pedidos con `STATUS = 'VALID'`, se unen `ventas` y `productos` por `ID_ITEM` (usando `F.broadcast()` sobre la tabla de productos por ser la más pequeña) y se renombran las columnas a español (`ID_ARTICULO`, `PRODUCTO`, `CATEGORIA`, `ID_PEDIDO`, `TIENDA`, `FECHA`, `CANTIDAD`, `PRECIO`, `DESCUENTO`, `ID_VENDEDOR`, etc.).
-
-### Campo calculado: etiqueta de descuento
-
-Sobre la columna `DESCUENTO` se aplica una cadena de `when` de Spark (en lugar de UDF, por rendimiento) que clasifica cada línea de venta según el porcentaje de descuento aplicado:
-
-| `DESCUENTO` | `ETIQUETA_DESCUENTO` |
-|-------------|----------------------|
-| 0           | `Precio Normal`      |
-| 1–74        | `promoción`          |
-| 75–99       | `bono empresarial`   |
-| 100         | `Regalo`             |
-
-El resultado se escribe en la tabla `silver.ventas_productos_categorias`.
-
----
+![Workflow de producción](evidencias/Databricks/Workflow.png)
 
 ## Tablas Golden
 
@@ -161,18 +141,6 @@ Agregación mensual por categoría de producto (`03Transform_Gold_Ventas_Categor
 | `NUM_PRECIO_NORMAL` / `NUM_PROMOCION` / ... | Conteo de líneas por etiqueta de descuento |
 
 Ambas tablas se escriben con `coalesce(4)` y `mode("overwrite")` mediante `insertInto`.
-
----
-
-## CI/CD implementado
-
-Se configuró un workflow de GitHub Actions (`.github/workflows/deploy-produccion.yml`) que se dispara con cada `push` a `main`: exporta los 6 notebooks desde el workspace de construcción (DEV), los importa al workspace de producción (PROD), valida/crea el cluster `ClusterProd`, configura el job `WF_Medallion_Retail_Prod` con sus dependencias y parámetros, lo ejecuta y monitorea su finalización.
-
-Los secrets configurados en el repositorio son:
-- `DATABRICKS_ORIGIN_HOST` / `DATABRICKS_ORIGIN_TOKEN` — host y token del workspace de construcción (DEV)
-- `DATABRICKS_DEST_HOST` / `DATABRICKS_DEST_TOKEN` — host y token del workspace de producción (PROD)
-
-![CI/CD](evidencias/CICD.png)
 
 ---
 
