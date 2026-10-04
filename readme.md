@@ -87,6 +87,8 @@ Los datos provienen de dos archivos planos cargados al contenedor `raw`:
 
 ![Flujo de Trabajo](evidencias/Azure/Contenedores.png)
 ![Flujo de Trabajo](evidencias/Azure/resource_groups_detalle.png)
+![Flujo de Trabajo](evidencias/Azure/key_vault.png)
+![Flujo de Trabajo](evidencias/Azure/Azure_Databricks.png)
 
 ### Databricks
 
