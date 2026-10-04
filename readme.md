@@ -4,7 +4,7 @@ Este proyecto consiste en un pipeline completo de ingeniería de datos construid
 
 El objetivo es tomar los datos crudos de pedidos y artículos, limpiarlos, unirlos y transformarlos hasta llegar a tablas analíticas listas para el reporting (descuentos aplicados, ingresos por tienda y por categoría, etc.).
 
-![Contenedores](evidencias/Contenedores.PNG)
+![Flujo de Trabajo](evidencias/Azure/Contenedores.png)
 
 ---
 
@@ -44,7 +44,7 @@ Para esto fue necesario configurar un Data Lake en Azure (ADLS Gen2) con un cont
 
 ## Arquitectura (Medallion)
 
-![Workflow](evidencias/Databricks/WorkfLow.png)
+![Flujo de Trabajo](evidencias/Databricks/Worflow.png)
 
 Los datos se separan en contenedores distintos por capa dentro de ADLS Gen2 (`raw`, `bronze`, `silver`, `golden`), cada uno gobernado mediante una **External Location** (`extl-raw`, `extl-bronze`, `extl-silver`, `extl-golden`, `extl-catalog`) respaldada por una **Storage Credential** llamada `credential`. Sobre esa base se organiza el catálogo `catalog_dev` con un esquema por capa:
 
@@ -111,7 +111,7 @@ A partir de las tablas Bronze, el pipeline construye la capa Silver y luego las 
 ### 5. Job configurado
 En Databricks Workflows se configuró el job `job-ftr-smartdata-proyectofinal-dev-01`, que encadena los 5 notebooks en orden (ingestas → transformación Silver → agregaciones Golden) respetando sus dependencias.
 
-https://github.com/Sherlock24/smartdata-ingenieriadatoseIA/blob/develop/evidencias/Databricks/Worflow.png
+![Flujo de Trabajo](evidencias/Databricks/Worflow_Ejecucion.png)
 
 ## Tablas Golden
 
